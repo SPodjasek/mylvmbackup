@@ -164,7 +164,7 @@ if (length($backuplv) == 0)
   $backuplv = time2str($backuplv, time);
 }
 
-if (-e "/dev/$vgname/$backuplv") {
+if (-e "/dev/$vgname/$backuplv" and $action eq "backup") {
   log_msg("Snapshot volume $backuplv already exists!", LOG_ERR); 
   exit(1);
 }
