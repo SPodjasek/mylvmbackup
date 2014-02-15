@@ -164,6 +164,11 @@ if (length($backuplv) == 0)
   $backuplv = time2str($backuplv, time);
 }
 
+if (-e "/dev/$vgname/$backuplv") {
+  log_msg("Snapshot volume $backuplv already exists!", LOG_ERR); 
+  exit(1);
+}
+
 my $date = time2str($datefmt, time);
 my $fullprefix = $prefix.'-'.$date.$suffix;
 

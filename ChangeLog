@@ -1,5 +1,16 @@
+2014-02-15  Lenz Grimmer <lenz@grimmer.com>
+
+ - BUG#1186570: Check for the existence of the backup LV and bail out
+   earlier (not when trying to create the LV snapshot)
+
+2013-08-25  Lenz Grimmer <lenz@grimmer.com>
+
+ - The purge action now only works for tar and local rsync archives (zbackup
+   repos would be corrupted, rsnap does its own retention)
+
 2013-08-08  Korjavin Ivan <korjavin@gmail.com>
- - zbackup backup type
+
+- Added zbackup backup type
 
 2013-06-11  Lenz Grimmer <lenz@grimmer.com>
 
