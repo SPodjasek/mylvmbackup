@@ -558,7 +558,7 @@ sub load_defaults
   $skip_flush_tables=0;
   $extra_flush_tables=0;
   $skip_mycnf=0;
-  $tararg='cvf';
+  $tararg='cf';
   $tarsuffixarg='';
   $tarfilesuffix='.tar.gz';
   $compressarg='--stdout --verbose --best';
@@ -671,10 +671,13 @@ sub do_backup_tar
   my $mountdir_rel = $mountdir;
   $mountdir_rel =~ s/^$topmountdir//g;
   $mountdir_rel =~ s/^\/+//g;
+
+  $tararg = "v" . $tararg unless $quiet;
   
   # To be portable, do a "cd" before calling tar (ie. don't do "tar ... -C ...")
   my $command= "cd '$topmountdir' ;";
-  # Check if a compress program has been set.
+
+# Check if a compress program has been set.
   # If NOT, then make tar write directly to $tarballtmp.
   # Otherwise make tar pipe to stdout and pipe stdin to compress program.
   
@@ -714,8 +717,8 @@ sub do_backup_zbackup
   my $command= "cd '$topmountdir' ;";
 
   # Build the primary tar command.
-  # We explicitly override $tararg to "cvf" to prevent compression that bad for zbackup
-  $command.= sprintf("'%s' cvf %s %s %s " ,
+  # We explicitly override $tararg to "cf" to prevent compression that bad for zbackup
+  $command.= sprintf("'%s' cf %s %s %s " ,
     $tar, "-", "$mountdir_rel/$relpath", $tarsuffixarg );
 
   # Maybe some additional files are to be added

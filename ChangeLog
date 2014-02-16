@@ -4,6 +4,7 @@
    individual my.cnf file as well as a directory name like /etc/mysql to back
    up an entire configuration directory. The configuration will be stored
    in a subdirectory <prefix>-cnf-<suffix>.
+ - BUG#1269096: Tar output was always verbose, even if quiet option was set.
 
 2014-02-15  Lenz Grimmer <lenz@grimmer.com>
 
