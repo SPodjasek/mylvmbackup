@@ -1,3 +1,10 @@
+2014-02-16  Lenz Grimmer <lenz@grimmer.com>
+
+ - BUG#1095690: The mycnf option now accepts both a file name pointing to an
+   individual my.cnf file as well as a directory name like /etc/mysql to back
+   up an entire configuration directory. The configuration will be stored
+   in a subdirectory <prefix>-cnf-<suffix>.
+
 2014-02-15  Lenz Grimmer <lenz@grimmer.com>
 
  - BUG#1186570: Check for the existence of the backup LV and bail out

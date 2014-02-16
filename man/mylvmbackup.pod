@@ -300,13 +300,14 @@ Only used to perform InnoDB recovery.
 
 =item B<--mycnf=string>
 
-Specifies the name of the MySQL config file to include in the backup.
+Specifies the name of a MySQL config file (e.g. I</etc/my.cnf>) or an entire
+config directory (e.g. I</etc/mysql>) to include in the backup.
 The default is I</etc/my.cnf>.
 
 =item B<--skip_mycnf>
 
-Skip backing up the MySQL configuration file.
-The default is to include a copy of the configuration file in the backup.
+Skip backing up the MySQL configuration.
+The default is to include a copy of the MySQL configuration in the backup.
 
 =item B<--hooksdir=string>
 
@@ -744,6 +745,7 @@ configuration file of the program.  I<Date::Format> is required to create the
 time stamp used in the backup file names. In addition, it utilizes
 I<Getopt::Long>, I<File::Basename> and I<File::Temp>, which usually are part of
 the default Perl distribution.
+I<File::Copy::Recursive> is used to copy the MySQL configuration file(s).
 I<Sys::Syslog> is only required in case you want to enable the syslog log
 facility.
 The I<MIME::Lite> module is required when you enable the mail reporting

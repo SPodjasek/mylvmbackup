@@ -21,6 +21,8 @@ use Config::IniFiles;
 use Date::Format;
 use DBD::mysql;
 use DBI;
+use File::Copy;
+use File::Copy::Recursive qw/ rcopy /;
 use File::Basename;
 use File::Path;
 use File::Temp qw/ mkstemps mktemp /;
@@ -169,6 +171,11 @@ if (-e "/dev/$vgname/$backuplv" and $action eq "backup") {
   exit(1);
 }
 
+if (not -e $mycnf and $skip_mycnf == 0 and $action eq "backup") {
+  log_msg("$mycnf does not exist!", LOG_ERR); 
+  exit(1);
+}
+
 my $date = time2str($datefmt, time);
 my $fullprefix = $prefix.'-'.$date.$suffix;
 
@@ -192,7 +199,7 @@ unless (($backuptype eq 'none') or ($backuptype eq 'rsync' and $backupdir =~ /^[
 }
   
 # Backup
-my ($posmountdir, $pos_filename, $pos_tempfile_fh, $pos_tempfile, $mycnf_basename, $mycnf_filename, @mountdir_content, $dsn, $dbh, $backupsuccess);
+my ($cnfdir, $posmountdir, $pos_filename, $pos_tempfile_fh, $pos_tempfile, $mycnf_filename, @mountdir_content, $dsn, $dbh, $backupsuccess);
 
 if ($action eq "backup")
 {
@@ -203,19 +210,21 @@ if ($action eq "backup")
   # extra / is to ensure we go a level under it. An empty prefix is disallowed.
   $mountdir .= '/'.$prefix;
   
-  $posmountdir = $mountdir;
-  $posmountdir .= '-pos'; # Notice that we do not add a slash.
+  # Notice that we do not add a slash.
+  $posmountdir = $mountdir.'-pos';
+  $cnfdir = $mountdir.'-cnf-'.$date.$suffix;
   
   $pos_filename = $posmountdir.'/'.$fullprefix.'.pos';
   ($pos_tempfile_fh, $pos_tempfile) = mkstemps($TMP.'/mylvmbackup-'.$fullprefix.'-XXXXXX', '.pos')
     or log_msg ("Cannot create temporary file $pos_tempfile: $!", LOG_ERR);
   
-  $mycnf_basename = File::Basename::basename($mycnf);
-  $mycnf_filename = $posmountdir.'/'.$fullprefix.'_'.$mycnf_basename;
+  $mycnf_filename = $cnfdir.'/'.File::Basename::basename($mycnf);
+
   
   # Now create it
   mkdir $mountdir;
   mkdir $posmountdir;
+  mkdir $cnfdir;
   
   # Check it again for existence and read/write.
   check_dir($mountdir, 'mountdir');
@@ -283,9 +292,9 @@ if ($action eq "backup")
       {
         do_innodb_recover();
       }
-      if (-f $mycnf && $skip_mycnf == 0)
+      if ($skip_mycnf == 0)
       {
-        create_mycnf_file();
+        copy_mycnf();
       }
   
       run_hook("prebackup");
@@ -641,12 +650,14 @@ sub _create_posfile_single
  $sth->finish;
 }
 
-sub create_mycnf_file
+sub copy_mycnf
 {
-  log_msg ("Copying $mycnf to $mycnf_filename...", LOG_INFO);
-  use File::Copy;
-  copy($mycnf, $mycnf_filename)
-      or log_msg ("Could not copy $mycnf to $mycnf_filename: $!", LOG_ERR);
+  log_msg ("Copying $mycnf to $cnfdir...", LOG_INFO);
+  unless (rcopy($mycnf, $cnfdir)) {
+    log_msg ("Could not copy $mycnf to $cnfdir: $!", LOG_ERR);
+    cleanup();
+    exit 1;
+  }
 }
 
 sub do_backup_tar
@@ -660,12 +671,6 @@ sub do_backup_tar
   my $mountdir_rel = $mountdir;
   $mountdir_rel =~ s/^$topmountdir//g;
   $mountdir_rel =~ s/^\/+//g;
-  my $pos_filename_rel = $pos_filename;
-  $pos_filename_rel =~ s/^$topmountdir//g;
-  $pos_filename_rel =~ s/^\/+//g;
-  my $mycnf_filename_rel = $mycnf_filename;
-  $mycnf_filename_rel =~ s/^$topmountdir//g;
-  $mycnf_filename_rel =~ s/^\/+//g;
   
   # To be portable, do a "cd" before calling tar (ie. don't do "tar ... -C ...")
   my $command= "cd '$topmountdir' ;";
@@ -681,8 +686,8 @@ sub do_backup_tar
     ($compress eq "") ? $tarballtmp : "-",
     "$mountdir_rel/$relpath", $tarsuffixarg);
   # Maybe some additional files are to be added
-  $command .= " $pos_filename_rel";
-  $command .= " $mycnf_filename_rel" if ($skip_mycnf==0);
+  $command .= " " . File::Basename::basename($posmountdir);
+  $command .= " " . File::Basename::basename($cnfdir) if ($skip_mycnf==0);
   # If the stuff should be compressed (ie. a compress program has been set),
   # then the stream has to be piped to the $compress program.
   $command .= "| $compress $compressarg -> $tarballtmp" unless ($compress eq "");
@@ -704,12 +709,6 @@ sub do_backup_zbackup
   my $mountdir_rel = $mountdir;
   $mountdir_rel =~ s/^$topmountdir//g;
   $mountdir_rel =~ s/^\/+//g;
-  my $pos_filename_rel = $pos_filename;
-  $pos_filename_rel =~ s/^$topmountdir//g;
-  $pos_filename_rel =~ s/^\/+//g;
-  my $mycnf_filename_rel = $mycnf_filename;
-  $mycnf_filename_rel =~ s/^$topmountdir//g;
-  $mycnf_filename_rel =~ s/^\/+//g;
 
   # To be portable, do a "cd" before calling tar (ie. don't do "tar ... -C ...")
   my $command= "cd '$topmountdir' ;";
@@ -720,8 +719,8 @@ sub do_backup_zbackup
     $tar, "-", "$mountdir_rel/$relpath", $tarsuffixarg );
 
   # Maybe some additional files are to be added
-  $command .= " $pos_filename_rel";
-  $command .= " $mycnf_filename_rel" if ($skip_mycnf==0);
+  $command .= " " . File::Basename::basename($posmountdir);
+  $command .= " " . File::Basename::basename($cnfdir) if ($skip_mycnf==0);
 
   my $zarchivename = $backupdir . '/backups/' . $fullprefix;
   $command .= sprintf("  | %s %s backup %s ", $zbackup , $zbackuparg, $zarchivename );
@@ -749,8 +748,8 @@ sub do_backup_rsnap
   $relpath_noslash =~ s/\/+$//g;
 
   my $command = "$rsnap $rsnaparg $mountdir/$relpath_noslash";
-  $command .= " $pos_filename";
-  $command .= " $mycnf_filename" if ($skip_mycnf==0);
+  $command .= " $posmountdir";
+  $command .= " $cnfdir" if ($skip_mycnf==0);
   $command .= " $backupdir/";
   $command .= " -- $rsnaprsyncarg" unless ($rsnaprsyncarg eq "");
 
@@ -773,8 +772,8 @@ sub do_backup_rsync
   $relpath_noslash =~ s/\/+$//g;
 
   my $command = "$rsync $rsyncarg $mountdir/$relpath_noslash";
-  $command .= " $pos_filename";
-  $command .= " $mycnf_filename" if ($skip_mycnf==0);
+  $command .= " $posmountdir";
+  $command .= " $cnfdir" if ($skip_mycnf==0);
   $command .= " $destdirtmp/";
   if (run_command("create rsync archive", $command))
   {
@@ -902,14 +901,11 @@ sub cleanup
   run_hook("precleanup");
   log_msg ("Cleaning up...", LOG_INFO);
   unlink $pos_tempfile if (-f $pos_tempfile);
+  rmtree($posmountdir) if (-d $posmountdir);
+  rmtree($cnfdir) if (-d $cnfdir);
   unless ($keep_mount) {
     run_command("Unmounting $mountdir","$umount $mountdir") if ($mounted);
-    unlink $pos_filename if (-f $pos_filename);
-    unlink $mycnf_filename if (-f $mycnf_filename);
-    if ($posmountdir) {
-      rmdir $mountdir;
-      rmdir $posmountdir;
-    }
+    rmtree($mountdir) if (-d $mountdir);
   } else {
     log_msg("Not removing mount as requested by configuration", LOG_INFO);
   }

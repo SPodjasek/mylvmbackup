@@ -27,8 +27,8 @@ mylvmbackup many times without risking to overwrite old archives. It is
 possible to preserve only a defined number of last backups, to avoid running
 out of disk space.
 
-Alternatively, instead of tar, you can use rsync or rsnap to perform the
-archiving.
+Alternatively, instead of tar, you can use rsync, rsnap or zbackup to perform
+the archiving.
 
 The rsync backup can perform both local backups as well as backing up to a
 remote server using rsyncd or rsync via SSH.
@@ -36,6 +36,14 @@ remote server using rsyncd or rsync via SSH.
 rsnap is a wrapper around rsync to automatically maintain and rotate a given
 number of last backups (7 by default). It utilizes hard links to link to
 unchanged files for saving disk space.
+
+zbackup is a globally-deduplicating backup tool. Feed a large .tar into it,
+and it will store duplicate regions of it only once, then compress and
+optionally encrypt the result. Feed another .tar file, and it will also re-use
+any data found in any previous backups. This way only new changes are stored,
+and as long as the files are not very different, the amount of storage required
+is very low. Any of the backup files stored previously can be read back in full
+at any time.
 
 Moreover, a backup type none is provided for cases where the user wants to use
 mylvmbackup only for creating the snapshots and intends to perform the actual
@@ -70,6 +78,7 @@ modules. It also needs the Config::IniFiles to read the global configuration
 file of the program. Date::Format is required to create the time stamp used in
 the backup file names. In addition, it utilizes Getopt::Long, File::Basename
 and File::Temp, which usually are part of the default Perl distribution.
+File::Copy::Recursive is used to copy the MySQL configuration file(s).
 Sys::Syslog is only required in case you want to enable the syslog log
 facility. The MIME::Lite module is required when you enable the mail reporting
 functionality. It also requires a functional local sendmail (or alternative)
