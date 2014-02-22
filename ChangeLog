@@ -1,3 +1,8 @@
+2014-02-22  Lenz Grimmer <lenz@grimmer.com>
+
+ - BUG#1283094: The Option "--recoveryopts" did not actually work when
+   provided on the command line.
+
 2014-02-16  Lenz Grimmer <lenz@grimmer.com>
 
  - BUG#1095690: The mycnf option now accepts both a file name pointing to an

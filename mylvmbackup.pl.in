@@ -475,7 +475,7 @@ sub load_args
     "suffix=s" => \$suffix,
     "datefmt:s" => \$datefmt,
     "innodb_recover" => \&innodb_recover,
-    "recoveryopts" => \&recoveryopts,
+    "recoveryopts=s" => \$recoveryopts,
     "pidfile=s" => \$pidfile,
     "skip_flush_tables" => \&skip_flush_tables,
     "extra_flush_tables" => \&extra_flush_tables,
