@@ -105,9 +105,9 @@ my $mail_to;
 my $mail_subject;
 my $snmp_report_on;
 my $snmp_base_oid;
-my $snmp_target1;
-my $snmp_target2;
+my $snmp_targets;
 my $snmp_community;
+my $snmp_port;
 my $use_thin_snapshots;
 my $zbackup;
 my $zbackuparg;
@@ -445,9 +445,9 @@ sub load_config
   $mail_subject = $cfg->val ('reporting', 'mail_subject', $mail_subject);
   $snmp_report_on = $cfg->val ('reporting', 'snmp_report_on', $snmp_report_on);
   $snmp_base_oid = $cfg->val ('reporting', 'snmp_base_oid', $snmp_base_oid);
-  $snmp_target1 = $cfg->val ('reporting', 'snmp_target1', $snmp_target1);
-  $snmp_target2 = $cfg->val ('reporting', 'snmp_target2', $snmp_target2);
+  $snmp_targets = $cfg->val ('reporting', 'snmp_targets', $snmp_targets);
   $snmp_community = $cfg->val ('reporting', 'snmp_community', $snmp_community);
+  $snmp_port = $cfg->val ('reporting', 'snmp_port', $snmp_port);
 
   $zbackup= $cfg->val ('zbackup', 'zbackup', $zbackup);
   $zbackuparg= $cfg->val ('zbackup', 'zbackuparg', $zbackuparg);
@@ -537,9 +537,9 @@ sub load_args
     "mail_subject=s" => \$mail_subject,
     "snmp_report_on" => \&snmp_report_on,
     "snmp_base_oid=s" => \&snmp_base_oid,
-    "snmp_target1=s" => \&snmp_target1,
-    "snmp_target2=s" => \&snmp_target2,
+    "snmp_targets=s" => \&snmp_targets,
     "snmp_community=s" => \&snmp_community,
+    "snmp_port=i" => \&snmp_port,
   ) or help();
 
   die help() unless $action eq "backup" or $action eq "purge";
@@ -623,9 +623,9 @@ sub load_defaults
   $mail_subject = 'mylvmbackup report for localhost';
   $snmp_report_on = 'never';
   $snmp_base_oid = '1.1.1.1.1.1.1.1';
-  $snmp_target1 = '127.0.0.1';
-  $snmp_target2 = '127.0.0.1';
+  $snmp_targets = '127.0.0.1';
   $snmp_community = 'public';
+  $snmp_port = '162';
 
 # zbackup
   $zbackup='zbackup';
@@ -1200,15 +1200,13 @@ sub snmp_update
 {
    my $message = shift;
    my $level   = shift;
+   my @targets = split(/,/, $snmp_targets);
 
-   foreach my $snmp_target ($snmp_target1, $snmp_target2) {
-
-       # SNMP_TRAP_PORT: 162
-
+   foreach my $target (@targets) {
        my ($session, $error) = Net::SNMP->session(
-           -hostname  => $snmp_target,
+           -hostname  => $target,
            -community => $snmp_community,
-           -port      => 162,
+           -port      => $snmp_port,
            -version   => 'snmpv2c'
        );
 
@@ -1225,10 +1223,10 @@ sub snmp_update
            -varbindlist => [ '1.3.6.1.2.1.1.3.0', 0x43, 600, '1.3.6.1.6.3.1.1.4.1.0', 0x06, "$snmp_base_oid.$level", "$snmp_base_oid.$level", 0x04, $message ]);
 
        if (!defined($result)) {
-           log_msg ("SNMP error while sending the trap $message to $snmp_target: $session->error()", LOG_ERR);
+           log_msg ("SNMP error while sending the trap $message to $target: $session->error()", LOG_ERR);
        }
        else {
-           log_msg ("Trap $message successfully sent to $snmp_target", LOG_INFO);
+           log_msg ("Trap $message successfully sent to $target", LOG_INFO);
        }
 
        $session->close();
