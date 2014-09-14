@@ -971,6 +971,8 @@ sub need_xfsworkaround {
 }
 
 sub help {
+# No need to send an email when printing the help output (BUG#1351000)
+$mail_report_on = 'never';
 print <<EOF;
 
 mylvmbackup Version $version ($build_date)
