@@ -21,9 +21,9 @@ use Config::IniFiles;
 use Date::Format;
 use DBD::mysql;
 use DBI;
+use File::Basename;
 use File::Copy;
 use File::Copy::Recursive qw/ rcopy /;
-use File::Basename;
 use File::Path;
 use File::Temp qw/ mkstemps mktemp /;
 use Getopt::Long;
@@ -103,6 +103,11 @@ my $mail_buffer;
 my $mail_from;
 my $mail_to;
 my $mail_subject;
+my $snmp_report_on;
+my $snmp_base_oid;
+my $snmp_targets;
+my $snmp_community;
+my $snmp_port;
 my $use_thin_snapshots;
 my $zbackup;
 my $zbackuparg;
@@ -140,6 +145,11 @@ if (($log_method eq "syslog") or ($log_method eq "both")) {
 if ($mail_report_on ne "never") {
   eval 'use MIME::Lite;';
   die ("You need to have MIME::Lite installed when enabling the mail report feature!\n") if $@;
+}
+
+if ($snmp_report_on ne "never") {
+  eval 'use Net::SNMP qw(:ALL);';
+  die ("You need to have Net::SNMP installed when enabling the snmp report feature!\n") if $@;
 }
 
 if (lvm_version() =~ /^1/)
@@ -433,6 +443,11 @@ sub load_config
   $mail_from = $cfg->val ('reporting', 'mail_from', $mail_from);
   $mail_to = $cfg->val ('reporting', 'mail_to', $mail_to);
   $mail_subject = $cfg->val ('reporting', 'mail_subject', $mail_subject);
+  $snmp_report_on = $cfg->val ('reporting', 'snmp_report_on', $snmp_report_on);
+  $snmp_base_oid = $cfg->val ('reporting', 'snmp_base_oid', $snmp_base_oid);
+  $snmp_targets = $cfg->val ('reporting', 'snmp_targets', $snmp_targets);
+  $snmp_community = $cfg->val ('reporting', 'snmp_community', $snmp_community);
+  $snmp_port = $cfg->val ('reporting', 'snmp_port', $snmp_port);
 
   $zbackup= $cfg->val ('zbackup', 'zbackup', $zbackup);
   $zbackuparg= $cfg->val ('zbackup', 'zbackuparg', $zbackuparg);
@@ -520,6 +535,11 @@ sub load_args
     "mail_from=s" => \$mail_from,
     "mail_to=s" => \$mail_to,
     "mail_subject=s" => \$mail_subject,
+    "snmp_report_on" => \&snmp_report_on,
+    "snmp_base_oid=s" => \&snmp_base_oid,
+    "snmp_targets=s" => \&snmp_targets,
+    "snmp_community=s" => \&snmp_community,
+    "snmp_port=i" => \&snmp_port,
   ) or help();
 
   die help() unless $action eq "backup" or $action eq "purge";
@@ -595,10 +615,17 @@ sub load_defaults
   $syslog_socktype = 'native';
   $syslog_facility = '';
   $syslog_remotehost = '';
+
+# reporting
   $mail_report_on = 'never';
   $mail_from = 'root@localhost';
   $mail_to = 'root@localhost';
   $mail_subject = 'mylvmbackup report for localhost';
+  $snmp_report_on = 'never';
+  $snmp_base_oid = '1.1.1.1.1.1.1.1';
+  $snmp_targets = '127.0.0.1';
+  $snmp_community = 'public';
+  $snmp_port = '162';
 
 # zbackup
   $zbackup='zbackup';
@@ -1171,6 +1198,43 @@ sub lvm_version
   return $lv;
 }
 
+sub snmp_update
+{
+   my $message = shift;
+   my $level   = shift;
+   my @targets = split(/,/, $snmp_targets);
+
+   foreach my $target (@targets) {
+       my ($session, $error) = Net::SNMP->session(
+           -hostname  => $target,
+           -community => $snmp_community,
+           -port      => $snmp_port,
+           -version   => 'snmpv2c'
+       );
+
+       if (!defined($session)) {
+           printf("ERROR: %s.\n", $error);
+           exit 1;
+       }
+
+       # TIMETICKS: 0x43
+       # OBJECT_IDENTIFIER: 0x06
+       # OCTET_STRING: 0x04
+
+       my $result = $session->snmpv2_trap(
+           -varbindlist => [ '1.3.6.1.2.1.1.3.0', 0x43, 600, '1.3.6.1.6.3.1.1.4.1.0', 0x06, "$snmp_base_oid.$level", "$snmp_base_oid.$level", 0x04, $message ]);
+
+       if (!defined($result)) {
+           log_msg ("SNMP error while sending the trap $message to $target: $session->error()", LOG_ERR);
+       }
+       else {
+           log_msg ("Trap $message successfully sent to $target", LOG_INFO);
+       }
+
+       $session->close();
+   }
+}
+
 END {
   if ($mail_report_on eq "always" ||
 	($mail_report_on eq "errors" && $errorstate == 1))
@@ -1186,7 +1250,16 @@ END {
   
     $message->send;
   }
-  exit 1 if ($errorstate == 1);
+
+  if ($snmp_report_on eq "always" ||
+	($snmp_report_on eq "errors" && $errorstate == 1))
+  {
+     snmp_update("mylvmbackup critical, see log", 2);
+     exit 1;
+  } else {
+     snmp_update("mylvmbackup ok", 0);
+     exit;
+  }
 }
 
 # vim: ts=2 sw=2 expandtab ft=perl:
