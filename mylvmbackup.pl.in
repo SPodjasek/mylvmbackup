@@ -149,7 +149,7 @@ if ($mail_report_on ne "never") {
 
 if ($snmp_report_on ne "never") {
   eval 'use Net::SNMP qw(:ALL);';
-  die ("You need to have Net::SNMP installed when enabling the snmp report feature!\n") if $@;
+  die ("You need to have Net::SNMP installed when enabling the SNMP report feature!\n") if $@;
 }
 
 if (lvm_version() =~ /^1/)
@@ -451,8 +451,6 @@ sub load_config
 
   $zbackup= $cfg->val ('zbackup', 'zbackup', $zbackup);
   $zbackuparg= $cfg->val ('zbackup', 'zbackuparg', $zbackuparg);
-
-
 }
 
 # Please keep all 3 functions in the same order: load_config, load_args, load_defaults 
@@ -630,7 +628,6 @@ sub load_defaults
 # zbackup
   $zbackup='zbackup';
   $zbackuparg='--non-encrypted';
-
 }
 
 sub flush_tables 
@@ -1000,6 +997,7 @@ sub need_xfsworkaround {
 sub help {
 # No need to send an email when printing the help output (BUG#1351000)
 $mail_report_on = 'never';
+$snmp_report_on = 'never';
 print <<EOF;
 
 mylvmbackup Version $version ($build_date)
@@ -1251,15 +1249,20 @@ END {
     $message->send;
   }
 
-  if ($snmp_report_on eq "always" ||
-	($snmp_report_on eq "errors" && $errorstate == 1))
+  if ($snmp_report_on eq "always" || $snmp_report_on eq "errors")
   {
-     snmp_update("mylvmbackup critical, see log", 2);
-     exit 1;
-  } else {
-     snmp_update("mylvmbackup ok", 0);
-     exit;
+    if ($errorstate == 1)
+    {
+      snmp_update("mylvmbackup critical, see log", 2);
+    } else {
+      if ($snmp_report_on eq "always")
+      {
+        snmp_update("mylvmbackup ok", 0);
+      }
+    }
   }
+
+  exit 1 if ($errorstate == 1);
 }
 
 # vim: ts=2 sw=2 expandtab ft=perl:

@@ -50,8 +50,10 @@ itself is considered to be the backup).
 
 I<mylvmbackup> also provides several methods for logging and reporting the
 progress and success of a backup run. The log messages can either be printed
-to the console (STDOUT) or logged via I<syslog>. Additionally, a report can be
-sent to you via email.
+to the console (STDOUT) or logged via I<syslog>.
+
+Additionally, a report can be sent to you via email, and you can receive
+notifications about failures or successes via SNMP.
 
 =head1 GENERAL HINTS
 
@@ -711,6 +713,44 @@ The default value is I<root@localhost>.
 The text to be used in the I<Subject:> header for email
 reports (requires the I<mail_report> option to be set).
 The default value is "mylvmbackup report for localhost".
+
+=item B<--snmp_report_on=string>
+
+Enable sending SNMP traps to specified SNMP target hosts.
+
+This option requires an installed I<Net::SNMP> Perl module.
+
+You should also review and adjust the I<snmp_base_oid>,
+I<snmp_targets>, I<snmp_community> I<snmp_port> configuration
+options to match you requirements.
+
+Supported values are I<never>, this disables sending SNMP
+traps completely. A value of I<always> sends an SNMP trap for
+each invocation of I<mylvmbackup>, I<errors> only sends an SNMP
+trap in case of an error condition.
+
+The default value is I<never>.
+
+=item B<--snmp_base_oid=string>
+
+The SNMP object identifier (OID) in dotted notation.
+The default is I<1.3.6.1.4.1.0.0>.
+
+=item B<--snmp_targets=string>
+
+A comma-separated list of host names or IP addresses to send
+SNMP traps to.
+The default is I<localhost>.
+
+=item B<--snmp_community=string>
+
+The SNMP community name.
+The default is I<public>.
+
+=item B<--snmp_port=number>
+
+The TCP port on the target host to send SNMP traps to.
+The default is I<162>.
 
 =item B<--configfile=string>
 
