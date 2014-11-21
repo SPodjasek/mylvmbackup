@@ -21,6 +21,7 @@ POD2HTML = /usr/bin/pod2html
 CHMOD = /bin/chmod
 CP = /bin/cp
 FIND = /usr/bin/find
+GPG = /usr/bin/gpg
 GZIP = /bin/gzip
 INSTALL = /usr/bin/install -p
 INSTALL_DATA = $(INSTALL) -m 644
@@ -38,7 +39,7 @@ TAR = /bin/tar
 # define some variables
 
 NAME = mylvmbackup
-VERSION = 0.16
+VERSION = 0.17
 BUILDDATE = $(shell date +%Y-%m-%d)
 MAN1 = man/$(NAME).1
 HOOKS := $(wildcard hooks/*.pm)
@@ -112,6 +113,9 @@ distdir: all
 dist: distdir
 	$(TAR) chof - $(distdir) | $(GZIP) -c > $(distdir).tar.gz
 	$(RM) -rf $(distdir)
+
+distsign: $(distdir).tar.gz
+	$(GPG) --armor --detach-sign --default-key=B27291F2 $(distdir).tar.gz
 
 rpm: dist
 	$(RPMBUILD) $(RPMFLAGS) $(distdir).tar.gz
