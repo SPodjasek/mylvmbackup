@@ -51,8 +51,11 @@ backup by using the appropriate hooks. (Or for cases where the snapshot itself
 is considered to be the backup).
 
 mylvmbackup also provides several methods for logging and reporting the
-progress and success of a backup run. The log messages can either be printed to
-the console (STDOUT), logged via syslog or sent to you via email.
+progress and success of a backup run. The log messages can either be printed
+to the console (STDOUT) or logged via syslog.
+
+Additionally, a report can be sent to you via email, and you can receive
+notifications about failures or successes via SNMP.
 
 It is required to run mylvmbackup on the same host where the MySQL server runs.
 If your MySQL daemon is not listening on localhost or using the default socket

@@ -1,3 +1,12 @@
+2014-09-14  Lenz Grimmer <lenz@grimmer.com>
+
+ - Merged SNMP support from Alexandre Anriot
+
+2014-09-14  Lenz Grimmer <lenz@grimmer.com>
+
+ - BUG#1351000: fixed crash when specifying both --help and $mail_report_on
+   was set to 'always' 
+
 2014-02-22  Lenz Grimmer <lenz@grimmer.com>
 
  - BUG#1283094: The Option "--recoveryopts" did not actually work when
@@ -23,7 +32,7 @@
 
 2013-08-08  Korjavin Ivan <korjavin@gmail.com>
 
-- Added zbackup backup type
+ - Added zbackup backup type
 
 2013-06-11  Lenz Grimmer <lenz@grimmer.com>
 
