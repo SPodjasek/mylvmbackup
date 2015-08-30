@@ -529,15 +529,15 @@ sub load_args
     "syslog_socktype=s" => \$syslog_socktype,
     "syslog_facility=s" => \$syslog_facility,
     "syslog_remotehost=s" => \$syslog_remotehost,
-    "mail_report_on" => \&mail_report_on,
+    "mail_report_on=s" => \$mail_report_on,
     "mail_from=s" => \$mail_from,
     "mail_to=s" => \$mail_to,
     "mail_subject=s" => \$mail_subject,
-    "snmp_report_on" => \&snmp_report_on,
-    "snmp_base_oid=s" => \&snmp_base_oid,
-    "snmp_targets=s" => \&snmp_targets,
-    "snmp_community=s" => \&snmp_community,
-    "snmp_port=i" => \&snmp_port,
+    "snmp_report_on=s" => \$snmp_report_on,
+    "snmp_base_oid=s" => \$snmp_base_oid,
+    "snmp_targets=s" => \$snmp_targets,
+    "snmp_community=s" => \$snmp_community,
+    "snmp_port=i" => \$snmp_port,
   ) or help();
 
   die help() unless $action eq "backup" or $action eq "purge";
