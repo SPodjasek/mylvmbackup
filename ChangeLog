@@ -1,3 +1,9 @@
+2015-09-20  Lenz Grimmer <lenz@grimmer.com>
+
+ - BUG:1496150: Create $mountdir and $backupdir with 0700 permissions,
+   use File::Path::make_path instead the legacy mkpath function.
+   (Thanks to Andreas Piesk for providing the patch)
+
 2015-08-30  Lenz Grimmer <lenz@grimmer.com>
 
  - BUG:1489242: fixed option handling for mail_report_on, snmp_report_on and

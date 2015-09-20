@@ -64,3 +64,7 @@ Alexandre Anriot contributed multiple patches:
    of previous backups in the backup directory.
  - SNMP support, which provides sending SNMP traps to specified SNMP target
    hosts to indicate success or failure of a backup run.
+
+Andreas Piesk submitted a patch that creates the mountdir and backupdir with
+0700 permissions and replaced the legacy File::Path::mkpath function with
+File::Patch::make_path. (Bug #1496150)

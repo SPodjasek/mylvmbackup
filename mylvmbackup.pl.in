@@ -203,7 +203,7 @@ my $snapshot_created = 0;
 # has already been created and set it up, if necessary
 unless (($backuptype eq 'none') or ($backuptype eq 'rsync' and $backupdir =~ /^[^\/].*:.*/))
 {
-  check_dir($backupdir, 'backupdir');
+  check_dir($backupdir, 'backupdir', 0700);
   # Check for and initialize zbackup repository
   if ($backuptype eq 'zbackup') { check_zbackuprepo($backupdir) };
 }
@@ -214,7 +214,7 @@ my ($cnfdir, $posmountdir, $pos_filename, $pos_tempfile_fh, $pos_tempfile, $mycn
 if ($action eq "backup")
 {
   # Check the mountdir, it must exist, and be readable/writeable
-  check_dir($mountdir, 'mountdir');
+  check_dir($mountdir, 'mountdir', 0700);
   
   # Append the prefix to the mountdir, to allow multiple parallel backups. The
   # extra / is to ensure we go a level under it. An empty prefix is disallowed.
@@ -237,7 +237,7 @@ if ($action eq "backup")
   mkdir $cnfdir;
   
   # Check it again for existence and read/write.
-  check_dir($mountdir, 'mountdir');
+  check_dir($mountdir, 'mountdir', 0700);
   
   # Now make sure it's empty
   @mountdir_content = glob "$mountdir/*" ;
@@ -1080,9 +1080,9 @@ DIRERROR
 #
 sub check_dir 
 {
- my ($dirname,$optioname) = @_;
+ my ($dirname, $optionname, $mode) = @_;
  if (!(-d $dirname)) {
-    eval { File::Path::mkpath($dirname) };
+    eval { File::Path::make_path($dirname, {mode => $mode} ) };
     if($@) {
       log_msg ("The directory $dirname does not exist and I was unable to create it.", LOG_ERR);
       exit 1;
@@ -1096,7 +1096,7 @@ sub check_dir
 The directory $dirname does not exist or I don't have 
 sufficient privileges to read/write/access it.
 Please verify the permissions or provide another directory 
-by using the option --$optioname=<directory>
+by using the option --$optionname=<directory>
 
 DIRERROR
 
