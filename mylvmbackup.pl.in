@@ -111,6 +111,9 @@ my $snmp_port;
 my $use_thin_snapshots;
 my $zbackup;
 my $zbackuparg;
+my $borg;
+my $borgargs;
+my $borgpassphrase;
 
 # Load defaults into variables
 load_defaults();
@@ -206,6 +209,7 @@ unless (($backuptype eq 'none') or ($backuptype eq 'rsync' and $backupdir =~ /^[
   check_dir($backupdir, 'backupdir', 0700);
   # Check for and initialize zbackup repository
   if ($backuptype eq 'zbackup') { check_zbackuprepo($backupdir) };
+  if ($backuptype eq 'borg') { check_borgrepo($backupdir) };
 }
   
 # Backup
@@ -313,6 +317,7 @@ if ($action eq "backup")
       elsif ($backuptype eq 'rsync') {$backupsuccess = do_backup_rsync()}
       elsif ($backuptype eq 'rsnap') {$backupsuccess = do_backup_rsnap()}
       elsif ($backuptype eq 'zbackup') {$backupsuccess = do_backup_zbackup()}
+      elsif ($backuptype eq 'borg') {$backupsuccess = do_backup_borg()}
       else {$backupsuccess = do_backup_none()};
   
       if ($backupsuccess == 1)
@@ -451,6 +456,10 @@ sub load_config
 
   $zbackup= $cfg->val ('zbackup', 'zbackup', $zbackup);
   $zbackuparg= $cfg->val ('zbackup', 'zbackuparg', $zbackuparg);
+
+  $borg = $cfg->val ('borg', 'borg', $borg);
+  $borgargs = $cfg->val ('borg', 'borgargs', $borgargs);
+  $borgpassphrase = $cfg->val ('borg', 'borgpassphrase', $borgpassphrase);
 }
 
 # Please keep all 3 functions in the same order: load_config, load_args, load_defaults 
@@ -480,6 +489,11 @@ sub load_args
 # zbackup
     "zbackup=s" => \$zbackup,
     "zbackuparg=s" => \$zbackuparg,
+
+# borg
+    "borg=s" => \$borg,
+    "borgargs=s" => \$borgargs,
+    "borgpassphrase=s" => \$borgpassphrase,
 
 # misc
     "backuptype=s" => \$backuptype,
@@ -565,7 +579,7 @@ sub load_defaults
   $backuplv = '';
 
 # misc
-  $backuptype='tar';
+  $backuptype='borg';
   $backupretention=0;
   $prefix='backup';
   $suffix='_mysql';
@@ -628,6 +642,11 @@ sub load_defaults
 # zbackup
   $zbackup='zbackup';
   $zbackuparg='--non-encrypted';
+
+# borg
+  $borg = 'borg';
+  $borgargs = '--stats --list --filter=AME';
+  $borgpassphrase = '';
 }
 
 sub flush_tables 
@@ -753,6 +772,27 @@ sub do_backup_zbackup
   $command .= sprintf("  | %s %s backup %s ", $zbackup , $zbackuparg, $zarchivename );
 
   if (run_command("create zbackup archive", $command))
+  {
+    return 1;
+  } else {
+    return 0;
+  }
+}
+
+sub do_backup_borg
+{
+  umask 077;
+
+  log_msg ("Taking actual backup...", LOG_INFO);
+  log_msg ("Creating borg archive $fullprefix", LOG_INFO);
+
+  $ENV{BORG_PASSPHRASE} = $borgpassphrase;
+
+  # To be portable, do a "cd" before calling borg
+  my $command= "cd '$topmountdir' ;";
+  $command .= sprintf("%s create %s %s::'%s' %s", $borg, $borgargs, $backupdir, $fullprefix, ".");
+
+  if (run_command("create borg archive", $command))
   {
     return 1;
   } else {
@@ -1029,8 +1069,8 @@ Common options:
   --prefix=<prefix>             Prefix for naming the backup (def: $prefix)
   --suffix=<suffix>             Suffix for naming the backup (def: $suffix)
   --backupdir=<dirname>         Path for archives (def: $backupdir)
-  --backuptype=<type>           Select backup type: none, rsnap, rsync, tar
-                                or zbackup (def: $backuptype)
+  --backuptype=<type>           Select backup type: none, rsnap, rsync, tar,
+                                zbackup or borg (def: $backuptype)
 
   --configfile=<file>           Specify an alternative configuration file
                                 (def: $configfile)
@@ -1073,6 +1113,16 @@ DIRERROR
 
    log_msg ("The directory $dirname is not a zbackup repo and I don't have sufficient privileges to initialize it.", LOG_ERR);
   }
+}
+
+sub check_borgrepo
+{
+ my ($dirname) = @_;
+
+ if (!(-d $dirname)) {
+    log_msg ("The directory $dirname doesn't exist.", LOG_ERR);
+    exit 1;
+ }
 }
 
 #
